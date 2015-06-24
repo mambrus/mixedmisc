@@ -28,85 +28,91 @@
 #include <errno.h>
 
 #define MAX_WORDS 15000
-#define MAX_SORT_ELEMENT_SIZE 15000  //!< Limitation of each sorting elements size
+#define MAX_SORT_ELEMENT_SIZE 15000 //!< Limitation of each sorting elements size
 
 #define TRUE 1
 #define FALSE 0
 
-typedef int my_comparison_fn_t (
-   const void *L,  //!< <em>"Leftmost"</em> element to compare with
-   const void *R   //!< <em>"Rightmost"</em> element to compare with
-);
+typedef int my_comparison_fn_t(const void *L,   //!< <em>"Leftmost"</em> element to compare with
+                               const void *R    //!< <em>"Rightmost"</em> element to compare with
+    );
 
 typedef my_comparison_fn_t *cmpf_t;
 
-typedef struct myarg_t{
-   void *a;              //!< The array to be sorted
-   int l;                //!< left index
-   int r;                //!< right index
-   int sz;               //!< Size of each element
-   cmpf_t cmpf;          //!< Comparison function
-}myarg_t;
+typedef struct myarg_t {
+    void *a;                    //!< The array to be sorted
+    int l;                      //!< left index
+    int r;                      //!< right index
+    int sz;                     //!< Size of each element
+    cmpf_t cmpf;                //!< Comparison function
+} myarg_t;
 
-void my_swap (
-   void *a,              //!< The array to be sorted
-   int l,                //!< left index
-   int r,                //!< right index
-   int sz                //!< Size of each element
-){
-   char t[MAX_SORT_ELEMENT_SIZE];
-   memcpy(t,                  &((char*)a)[l*sz],   sz);
-   memcpy(&((char*)a)[l*sz],  &((char*)a)[r*sz],   sz);
-   memcpy(&((char*)a)[r*sz],  t,                   sz);
+void my_swap(void *a,           //!< The array to be sorted
+             int l,             //!< left index
+             int r,             //!< right index
+             int sz             //!< Size of each element
+    )
+{
+    char t[MAX_SORT_ELEMENT_SIZE];
+    memcpy(t, &((char *)a)[l * sz], sz);
+    memcpy(&((char *)a)[l * sz], &((char *)a)[r * sz], sz);
+    memcpy(&((char *)a)[r * sz], t, sz);
 }
 
-unsigned int my_qsort_depth = 0; //!< @brief Recursion debug variable @internal
-unsigned int my_curr_depth = 0;  //!< @brief Recursion debug variable @internal
+unsigned int my_qsort_depth = 0;    //!< @brief Recursion debug variable @internal
+unsigned int my_curr_depth = 0; //!< @brief Recursion debug variable @internal
 
-void *conc_quicksort ( void* inarg_vp){
-   int i,j;
-   void *v;
-   struct myarg_t *inarg_p = (myarg_t *)inarg_vp;
-   struct myarg_t leftArg;
-   struct myarg_t rightArg;
-   pthread_t   leftID;
-   pthread_t   rightID;
+void *conc_quicksort(void *inarg_vp)
+{
+    int i, j;
+    void *v;
+    struct myarg_t *inarg_p = (myarg_t *) inarg_vp;
+    struct myarg_t leftArg;
+    struct myarg_t rightArg;
+    pthread_t leftID;
+    pthread_t rightID;
 
-   my_curr_depth++;
-   if (my_curr_depth > my_qsort_depth)
-      my_qsort_depth=my_curr_depth;
+    my_curr_depth++;
+    if (my_curr_depth > my_qsort_depth)
+        my_qsort_depth = my_curr_depth;
 
-   if ( inarg_p->r > inarg_p->l ){
+    if (inarg_p->r > inarg_p->l) {
 
-      v = (void**)(((char*)(inarg_p->a))+(inarg_p->r*inarg_p->sz));
-      i = inarg_p->l-1; j = inarg_p->r;
-      for (;;){
-         while ( inarg_p->cmpf(  (void**)(((char*)(inarg_p->a))+(++i*inarg_p->sz)), v ) < 0) ;
-         while ( inarg_p->cmpf(  (void**)(((char*)(inarg_p->a))+(--j*inarg_p->sz)), v ) > 0) ;
-         if (i >= j) break;
-         my_swap(inarg_p->a,i,j,inarg_p->sz);
-      }
-      my_swap(inarg_p->a,i,inarg_p->r,inarg_p->sz);
+        v = (void **)(((char *)(inarg_p->a)) + (inarg_p->r * inarg_p->sz));
+        i = inarg_p->l - 1;
+        j = inarg_p->r;
+        for (;;) {
+            while (inarg_p->
+                   cmpf((void **)(((char *)(inarg_p->a)) + (++i * inarg_p->sz)),
+                        v) < 0) ;
+            while (inarg_p->
+                   cmpf((void **)(((char *)(inarg_p->a)) + (--j * inarg_p->sz)),
+                        v) > 0) ;
+            if (i >= j)
+                break;
+            my_swap(inarg_p->a, i, j, inarg_p->sz);
+        }
+        my_swap(inarg_p->a, i, inarg_p->r, inarg_p->sz);
 
-      leftArg.a   = inarg_p->a;
-      leftArg.l   = inarg_p->l;
-      leftArg.r   = i-1;
-      leftArg.cmpf = inarg_p->cmpf;
-      leftArg.sz  = inarg_p->sz;
+        leftArg.a = inarg_p->a;
+        leftArg.l = inarg_p->l;
+        leftArg.r = i - 1;
+        leftArg.cmpf = inarg_p->cmpf;
+        leftArg.sz = inarg_p->sz;
 
-      rightArg.a  = inarg_p->a;
-      rightArg.l  = i+1;
-      rightArg.r  = inarg_p->r;
-      rightArg.cmpf= inarg_p->cmpf;
-      rightArg.sz = inarg_p->sz;
+        rightArg.a = inarg_p->a;
+        rightArg.l = i + 1;
+        rightArg.r = inarg_p->r;
+        rightArg.cmpf = inarg_p->cmpf;
+        rightArg.sz = inarg_p->sz;
 
-      assert (pthread_create(&leftID,  NULL, conc_quicksort, &leftArg)  == 0);
-      assert (pthread_create(&rightID, NULL, conc_quicksort, &rightArg) == 0);
-      assert (pthread_join(leftID,  NULL) == 0);
-      assert (pthread_join(rightID, NULL) == 0);
-   }
-   my_curr_depth--;
-   return (void*)0;
+        assert(pthread_create(&leftID, NULL, conc_quicksort, &leftArg) == 0);
+        assert(pthread_create(&rightID, NULL, conc_quicksort, &rightArg) == 0);
+        assert(pthread_join(leftID, NULL) == 0);
+        assert(pthread_join(rightID, NULL) == 0);
+    }
+    my_curr_depth--;
+    return (void *)0;
 }
 
 #define ISALFANUM( expr ) (\
@@ -114,11 +120,9 @@ void *conc_quicksort ( void* inarg_vp){
 )
 
 //any nonzero expression is considered true in C.
-int my_strvcmp (
-   const void *L,
-   const void *R
-){
-   return strncmp(*(char**)L,*(char**)R,80);
+int my_strvcmp(const void *L, const void *R)
+{
+    return strncmp(*(char **)L, *(char **)R, 80);
 }
 
 char *text_p[MAX_WORDS];
@@ -129,7 +133,8 @@ char *text_p[MAX_WORDS];
 #define READ_TEXT "around_the_world_s.txt"
 #endif
 
-static const char theText[] = "                                                   \
+static const char theText[] =
+    "                                                   \
 AROUND THE WORLD IN EIGHTY DAYS                                                   \
                                                                                   \
                                                                                   \
@@ -280,98 +285,90 @@ of Passepartout.\"                                                              
 ";
 */
 //------1---------2---------3---------4---------5---------6---------7---------8
-
 /* Make test shorter for weaker targets */
 #ifdef __ANDROID__
 #define NLOOPS 1000
 #endif
-
-
 /* Default to something...*/
 #ifndef NLOOPS
 #define NLOOPS 50000
 #endif
+int run_test(int j)
+{
+    pthread_t sortID;
+    int i, k;
+    int rc;
+    struct timespec tp;
+    struct myarg_t sortArg;
 
-int run_test(int j){
-   pthread_t sortID;
-   int i,k;
-   int rc;
-   struct timespec tp;
-   struct myarg_t sortArg;
+    //for (l=0; l<n; l++){
+    //Use normal qsort as a reference (enable the following row and disable the thread below)
+    //qsort(text_p,j-1,sizeof(char*),my_strvcmp);
+    rc = clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+    assert(rc == 0);
+    fprintf(stderr, "%d.%09d ", (int)tp.tv_sec, (int)tp.tv_nsec);
 
-   //for (l=0; l<n; l++){
-	   //Use normal qsort as a reference (enable the following row and disable the thread below)
-	   //qsort(text_p,j-1,sizeof(char*),my_strvcmp);
-	   rc=clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
-	   assert(rc==0);
-	   fprintf(stderr,"%d.%09d ",
-		  (int)tp.tv_sec, (int)tp.tv_nsec
-	   );
+    sortArg.a = text_p;
+    sortArg.l = 0;
+    sortArg.r = j - 2;
+    sortArg.sz = sizeof(char *);
+    sortArg.cmpf = my_strvcmp;
 
-	   sortArg.a   = text_p;
-	   sortArg.l   = 0;
-	   sortArg.r   = j-2;
-	   sortArg.sz  = sizeof(char*);
-	   sortArg.cmpf= my_strvcmp;
+    assert(pthread_create(&sortID, NULL, conc_quicksort, &sortArg) == 0);
+    assert(pthread_join(sortID, NULL) == 0);
 
-	   assert (pthread_create(&sortID, NULL, conc_quicksort, &sortArg) == 0);
-	   assert (pthread_join(sortID, NULL) == 0);
-
-	   for (i=0,k=0;i<j;i++){
-		  assert (j<NLOOPS);
-		  for (k=0;ISALFANUM(text_p[i][k]);k++)
-			 putchar(text_p[i][k]);
-		  printf("\n");
-	   }
+    for (i = 0, k = 0; i < j; i++) {
+        assert(j < NLOOPS);
+        for (k = 0; ISALFANUM(text_p[i][k]); k++)
+            putchar(text_p[i][k]);
+        printf("\n");
+    }
 #if defined(__TINKER)
-	   printf("\n\n========\nJob done. Total number of threads: %d\n",some_internal_cntr);
+    printf("\n\n========\nJob done. Total number of threads: %d\n",
+           some_internal_cntr);
 #endif
-	   rc=clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
-	   assert(rc==0);
-	   fprintf(stderr,"%d.%09d\n",
-		  (int)tp.tv_sec, (int)tp.tv_nsec
-	   );
-   //}
-   return 0;
+    rc = clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+    assert(rc == 0);
+    fprintf(stderr, "%d.%09d\n", (int)tp.tv_sec, (int)tp.tv_nsec);
+    //}
+    return 0;
 }
 
 int main(int argc, char **argv)
 {
-   unsigned int      i,j,l;
-   int               inText = 0;
-   char *backup;
+    unsigned int i, j, l;
+    int inText = 0;
+    char *backup;
 
 #if defined(TINKER)
-   printf("Tinker concurrent sort\n");
+    printf("Tinker concurrent sort\n");
 #else
-   printf("Linux concurrent sort\n");
+    printf("Linux concurrent sort\n");
 #endif
-   printf("Root started\n");
+    printf("Root started\n");
 
-   //Build up the pointer table (primitive, yes I know ;) )
-   for (i=0,j=0;i<sizeof(theText);i++){
-      assert (j<MAX_WORDS);
+    //Build up the pointer table (primitive, yes I know ;) )
+    for (i = 0, j = 0; i < sizeof(theText); i++) {
+        assert(j < MAX_WORDS);
 
-      if ( (inText == FALSE) && ISALFANUM(theText[i]) ){
-         inText = 1;
-         text_p[j] = (char *)&theText[i];
-         j++;
-      }
+        if ((inText == FALSE) && ISALFANUM(theText[i])) {
+            inText = 1;
+            text_p[j] = (char *)&theText[i];
+            j++;
+        }
 
-      if ( (inText == TRUE) && !ISALFANUM(theText[i]) ){
-         inText = 0;
-      }
-   }
-   backup=malloc(sizeof text_p);
-   memcpy(backup, text_p, sizeof text_p);
+        if ((inText == TRUE) && !ISALFANUM(theText[i])) {
+            inText = 0;
+        }
+    }
+    backup = malloc(sizeof text_p);
+    memcpy(backup, text_p, sizeof text_p);
 
+    for (l = 0; l < NLOOPS; l++) {
+        memcpy(text_p, backup, sizeof text_p);
+        run_test(j);
+    }
+    printf("Finished successfully\n");
 
-   for (l=0; l<NLOOPS; l++){
-   	   memcpy(text_p, backup, sizeof text_p);
-	   run_test(j);
-   }
-   printf("Finished successfully\n");
-
-   return 0;
+    return 0;
 }
-
