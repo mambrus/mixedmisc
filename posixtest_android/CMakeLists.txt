@@ -1,5 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
-project (sampler C)
+project (posixtest C)
+INCLUDE (CheckLibraryExists)
 
 ################################################################################
 # Configuration options
@@ -12,16 +13,6 @@ set(SYSROOT
 	${DETECTED_SYSROOT}
 	CACHE PATH
 	"System path (--system=)")
-
-# Enable any liblog
-option(ENABLE_LOGGING
-	"Enable log messages."
-	ON)
-
-# Enable logging to pass-throgh to syslogd
-option(ENABLE_SYSLOG
-	"Enable log to syslog (Linux/OSX)"
-	ON)
 
 ################################################################################
 if (NOT SYSROOT STREQUAL "")
@@ -39,58 +30,15 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_EXTRA_C_FLAGS} -no-integrated-cpp -Wno-unused
 ################################################################################
 # Libraries (src binding)
 ################################################################################
-include_directories ("${PROJECT_SOURCE_DIR}/lib/libsampler/include")
-include_directories ("${PROJECT_SOURCE_DIR}/idoc/include")
-include_directories ("${PROJECT_SOURCE_DIR}/lib/liblog/include")
-include_directories ("${PROJECT_SOURCE_DIR}/lib/libmlist/include")
-include_directories ("${PROJECT_SOURCE_DIR}/lib/libmtime/include")
-include_directories ("${PROJECT_SOURCE_DIR}/lib/libmqueue/include")
 
-# -sampler- Main bulk of the project is in this library
-add_subdirectory (lib/libsampler)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--undefined=__sampler_init")
-set (EXTRA_LIBS ${EXTRA_LIBS} libsampler)
-
-# -Man-, interactive help- and other generated pages
-add_subdirectory (idoc)
-set (EXTRA_LIBS ${EXTRA_LIBS} idoc)
-
-# -Logging and error/exception handling-
-if (ENABLE_LOGGING)
-    add_subdirectory (lib/liblog)
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--undefined=__liblog_init")
-	set (EXTRA_LIBS ${EXTRA_LIBS} liblog)
-endif (ENABLE_LOGGING)
-
-# -Lists-
-add_subdirectory (lib/libmlist)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--undefined=__mlist_init")
-set (EXTRA_LIBS ${EXTRA_LIBS} libmlist)
-
-# -time-
-add_subdirectory (lib/libmtime)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--undefined=__mtime_init")
-set (EXTRA_LIBS ${EXTRA_LIBS} libmtime)
-
-# -mqueue-
-add_subdirectory (lib/libmqueue)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--undefined=__mqueue_init")
-set (EXTRA_LIBS ${EXTRA_LIBS} libmqueue)
-
-################################################################################
-# external libraries
-################################################################################
-if (NOT ANDROID_TARGET)
-	set (EXTRA_LIBS ${EXTRA_LIBS} cap)
-endif (NOT ANDROID_TARGET)
 
 ################################################################################
 # Project
 ################################################################################
 # The version number.
-set (sampler_VERSION_MAJOR 0)
-set (sampler_VERSION_MINOR 0)
-set (sampler_VERSION_PATCH 1)
+set (posixtest_VERSION_MAJOR 0)
+set (posixtest_VERSION_MINOR 0)
+set (posixtest_VERSION_PATCH 1)
 
 # configure a header file to pass some of the CMake settings
 # to the source code
@@ -103,11 +51,20 @@ configure_file (
 # so that we will find TutorialConfig.h
 include_directories("${PROJECT_BINARY_DIR}")
 
-set(SAMPLER_SOURCE
-	sampler.c
+set(POSIXTEST_SOURCE
+	concurrent_sort.c
 )
 
-install(PROGRAMS ${PROJECT_BINARY_DIR}/sampler DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(PROGRAMS ${PROJECT_BINARY_DIR}/posixtest DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
-add_executable(sampler ${SAMPLER_SOURCE})
-target_link_libraries (sampler ${EXTRA_LIBS})
+add_executable(posixtest ${POSIXTEST_SOURCE})
+target_link_libraries (posixtest ${EXTRA_LIBS})
+
+################################################################################
+# External libraries
+################################################################################
+CHECK_LIBRARY_EXISTS(rt clock_gettime "" HAVE_LIB_RT)
+if (HAVE_LIB_RT)
+    target_link_libraries(posixtest rt)
+endif (HAVE_LIB_RT)
+
