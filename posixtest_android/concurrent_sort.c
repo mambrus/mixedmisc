@@ -33,6 +33,10 @@
 #define TRUE 1
 #define FALSE 0
 
+#ifdef HAVE_ANDROID_OS
+int pthread_cancel(pthread_t thread);
+#endif
+
 typedef int my_comparison_fn_t(const void *L,   //!< <em>"Leftmost"</em> element to compare with
                                const void *R    //!< <em>"Rightmost"</em> element to compare with
     );
@@ -82,12 +86,12 @@ void *conc_quicksort(void *inarg_vp)
         i = inarg_p->l - 1;
         j = inarg_p->r;
         for (;;) {
-            while (inarg_p->
-                   cmpf((void **)(((char *)(inarg_p->a)) + (++i * inarg_p->sz)),
-                        v) < 0) ;
-            while (inarg_p->
-                   cmpf((void **)(((char *)(inarg_p->a)) + (--j * inarg_p->sz)),
-                        v) > 0) ;
+            while (inarg_p->cmpf
+                   ((void **)(((char *)(inarg_p->a)) + (++i * inarg_p->sz)),
+                    v) < 0) ;
+            while (inarg_p->cmpf
+                   ((void **)(((char *)(inarg_p->a)) + (--j * inarg_p->sz)),
+                    v) > 0) ;
             if (i >= j)
                 break;
             my_swap(inarg_p->a, i, j, inarg_p->sz);
@@ -201,7 +205,8 @@ advanced by members of the club as to lost and unheard-of travellers,           
 pointing out the true probabilities, and seeming as if gifted with                \
 a sort of second sight, so often did events justify his predictions.              \
 He must have travelled everywhere, at least in the spirit.                        \
-";/*
+";
+/*
                                                                                   \
 It was at least certain that Phileas Fogg had not absented himself                \
 from London for many years.  Those who were honoured by a better                  \
@@ -286,7 +291,7 @@ of Passepartout.\"                                                              
 */
 //------1---------2---------3---------4---------5---------6---------7---------8
 /* Make test shorter for weaker targets */
-#ifdef __ANDROID__
+#ifdef HAVE_ANDROID_OS
 #define NLOOPS 1000
 #endif
 /* Default to something...*/
@@ -315,7 +320,12 @@ int run_test(int j)
     sortArg.cmpf = my_strvcmp;
 
     assert(pthread_create(&sortID, NULL, conc_quicksort, &sortArg) == 0);
-    assert(pthread_join(sortID, NULL) == 0);
+    rc = pthread_join(sortID, NULL);
+    if (rc != 0) {
+        fprintf(stderr, "Join failed with error %d. Cancelling thread instead.",
+                rc);
+        //pthread_cancel(sortID);
+    }
 
     for (i = 0, k = 0; i < j; i++) {
         assert(j < NLOOPS);
